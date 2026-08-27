@@ -11,9 +11,10 @@ the problem, the primary user, and the current state. Two or three sentences.
 Keep it current. An out-of-date description here misleads every future conversation.
 -->
 
-This is an unmodified AISprints starter. No application features have been built yet.
-The technical PRD in `ai-workspace/` is the source of truth for what is being built and
-for the current phase of work.
+Greenfield Quiz Maker — Sprint 1. Teachers will eventually collaborate on an MCQ bank;
+this sprint builds registration/login/logout and the Users database foundation only.
+Phases 1–5 are complete (Users DB, User Service, auth endpoints, register/login UI + MCQ stub, verification). See
+`ai-workspace/register-login-logout_prd.md` for details.
 
 ## Stack
 
@@ -23,9 +24,11 @@ for the current phase of work.
 - **shadcn/ui** on Base UI, `base-nova` style, with Lucide icons
 - **TypeScript** in strict mode
 - **Wrangler** for Cloudflare configuration, secrets, and deployment
+- **Cloudflare D1** for persistence (Users table; binding `DB`)
+- **Vitest** for unit tests (`npm test` / `npm run test:watch`)
 
-No database, authentication, testing framework, or AI SDK is installed yet. Do not
-write code that imports one without adding it first and telling the user.
+No AI SDK or MCQ features are built yet. Do not
+write code that imports an uninstalled package without adding it first and telling the user.
 
 ## Layout
 
@@ -49,6 +52,8 @@ Import through the `@/` alias, which maps to `src/`.
 | `npm run preview` | Build and run on the local **Workers** runtime |
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
+| `npm test` | Run Vitest once |
+| `npm run test:watch` | Vitest watch mode |
 | `npm run deploy` | Build and deploy to Cloudflare |
 | `npm run cf-typegen` | Regenerate `cloudflare-env.d.ts` after changing bindings |
 
