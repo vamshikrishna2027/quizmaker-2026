@@ -1,5 +1,5 @@
 Date created: 2026-08-26
-Date last modified: 2026-08-26
+Date last modified: 2026-08-27
 
 # Register / Login / Logout - Technical PRD
 
@@ -369,10 +369,11 @@ Registration and Login **must** call this service for database interactions; end
 
 **Deliverables**:
 
-- shadcn-based `SignupForm` and `LoginForm` (`src/components/signup-form.tsx`, `src/components/login-form.tsx`)
+- shadcn-based `SignupForm` and `LoginForm` (`src/components/signup-form.tsx`, `src/components/login-form.tsx`) — PRD fields only (no Google/social login, forgot password, or confirm-password)
 - Pages: `/register`, `/login`, `/mcq` (+ home links)
 - MCQ stub with logout form (`src/components/mcq-stub-page.tsx`)
-- Auth submit helper (`src/lib/auth/submit-auth.ts`)
+- Auth submit helper (`src/lib/auth/submit-auth.ts`) — handles browser `opaqueredirect` / missing `Location` by navigating to `/mcq` (or `/login` for logout)
+- Middleware (`src/middleware.ts`) — rewrites POST `/register|/login|/logout` → `/api/*` so UI pages and route handlers can coexist
 - Vitest + Testing Library tests (`src/components/auth-forms.test.tsx`, `src/lib/auth/submit-auth.test.ts`)
 
 ### Phase 5: Verification of Application - COMPLETED
@@ -472,7 +473,23 @@ Registration and Login **must** call this service for database interactions; end
 
 ## Troubleshooting Guide
 
-_Populate during implementation as issues are found and fixed._
+### Login shows "Request failed. Please try again." after a successful POST
+
+**Problem**: Server returns `POST /login 303` (success redirect), but the UI shows a generic failure and does not navigate to `/mcq`.
+
+**Cause**: Browser `fetch` with `redirect: "manual"` can produce an `opaqueredirect` response (status `0`) that hides the `Location` header. The client then treated the response as a failed non-OK body parse.
+
+**Solution**: In `src/lib/auth/submit-auth.ts`, treat `opaqueredirect` and 3xx responses as success and call `window.location.assign` with the `Location` header when present, otherwise fall back to `/mcq` (login/register) or `/login` (logout).
+
+**Code Reference**: `src/lib/auth/submit-auth.ts`
+
+### Next.js conflict: route and page at the same path
+
+**Problem**: Build fails with conflicting route and page at `/login` or `/register`.
+
+**Cause**: App Router does not allow `page.tsx` and `route.ts` under the same segment.
+
+**Solution**: Keep UI pages at `/login` and `/register`; put POST handlers under `/api/*` and rewrite POSTs via `src/middleware.ts`.
 
 ---
 
@@ -493,7 +510,7 @@ _Populate during implementation as issues are found and fixed._
 
 ## Current Status
 
-**Last Updated**: 2026-08-26
+**Last Updated**: 2026-08-27
 **Current Phase**: Sprint 1 complete (Phases 1–5)
 **Status**: COMPLETED
-**Next Steps**: Sprint 2 — MCQ functionality (out of scope for this PRD)
+**Next Steps**: Sprint 2 — MCQ functionality (out of scope for this PRD). Post-verification fix: client redirect handling for login/register (`submit-auth.ts`).
