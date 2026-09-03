@@ -7,8 +7,7 @@ alwaysApply: false
 # Cloudflare D1
 
 D1 is Cloudflare's SQLite database. This project binds D1 as `DB` in `wrangler.jsonc`
-(`database_name`: `quizmaker-2026`). Local migrations use a placeholder `database_id`
-until a remote database is created with `npx wrangler d1 create quizmaker-2026`.
+(`database_name`: `quizmaker-2026`). The remote `database_id` is in `wrangler.jsonc`.
 
 ## Adding D1 to the project
 

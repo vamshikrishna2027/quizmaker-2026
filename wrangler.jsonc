@@ -29,15 +29,11 @@
 	 * databases, object storage, AI inference, real-time communication and more.
 	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
 	 */
-	/**
-	 * Local D1 binding for Sprint 1. Replace database_id after running:
-	 * `npx wrangler d1 create quizmaker-2026`
-	 */
 	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "quizmaker-2026",
-			"database_id": "00000000-0000-0000-0000-000000000000",
+			"database_id": "03d2f734-5631-4e44-9829-a40ca41a179d",
 			"migrations_dir": "migrations"
 		}
 	],
