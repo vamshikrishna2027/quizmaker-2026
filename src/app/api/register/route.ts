@@ -3,13 +3,13 @@ import {
   createUser,
   UserConflictError,
 } from "@/lib/services/user-service";
+import { NextResponse } from "next/server";
 import {
   errorResponse,
   parseBody,
   readRequestBody,
-  redirectResponse,
 } from "@/lib/auth/http";
-import { MCQ_STUB_PATH } from "@/lib/auth/paths";
+import { MCQS_PATH } from "@/lib/auth/paths";
 import { registerSchema } from "@/lib/auth/schemas";
 
 export async function POST(request: Request): Promise<Response> {
@@ -21,8 +21,11 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const db = await getDb();
-    await createUser(db, parsed.data);
-    return redirectResponse(request, MCQ_STUB_PATH);
+    const user = await createUser(db, parsed.data);
+    return NextResponse.json({
+      userId: user.id,
+      redirectTo: MCQS_PATH,
+    });
   } catch (error) {
     if (error instanceof UserConflictError) {
       return errorResponse(error.message, 409, error.field);

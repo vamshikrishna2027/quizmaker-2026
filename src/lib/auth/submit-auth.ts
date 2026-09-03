@@ -1,8 +1,5 @@
-import {
-  LOGIN_PATH,
-  LOGOUT_PATH,
-  MCQ_STUB_PATH,
-} from "@/lib/auth/paths";
+import { LOGIN_PATH, LOGOUT_PATH, MCQS_PATH } from "@/lib/auth/paths";
+import { clearActorUserId, storeActorUserId } from "@/lib/mcq/actor";
 
 export type AuthSubmitResult =
   | { ok: true }
@@ -12,11 +9,15 @@ function successRedirectPath(url: string): string {
   if (url.includes(LOGOUT_PATH)) {
     return LOGIN_PATH;
   }
-  return MCQ_STUB_PATH;
+  return MCQS_PATH;
+}
+
+function isLogoutUrl(url: string): boolean {
+  return url.includes(LOGOUT_PATH);
 }
 
 /**
- * POST JSON to an auth route handler and follow redirect responses in the browser.
+ * POST JSON to an auth route handler and follow success in the browser.
  */
 export async function submitAuthRequest(
   url: string,
@@ -28,6 +29,10 @@ export async function submitAuthRequest(
     body: JSON.stringify(body),
     redirect: "manual",
   });
+
+  if (isLogoutUrl(url)) {
+    clearActorUserId();
+  }
 
   // Browsers may hide headers on opaqueredirect even for same-origin 303 responses.
   if (
@@ -50,6 +55,19 @@ export async function submitAuthRequest(
       error: data?.error ?? "Request failed. Please try again.",
       field: data?.field,
     };
+  }
+
+  const data = (await response.json().catch(() => null)) as {
+    userId?: string;
+    redirectTo?: string;
+  } | null;
+
+  if (data?.userId) {
+    storeActorUserId(data.userId);
+  }
+
+  if (data?.redirectTo) {
+    window.location.assign(data.redirectTo);
   }
 
   return { ok: true };

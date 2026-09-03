@@ -478,36 +478,37 @@ Do not start Phase N+1 until Phase N’s suite is green and this PRD’s phase m
 - `src/lib/services/mcq-service.test.ts` (23 tests, in-memory D1)
 - This PRD: Phase 2 → COMPLETED
 
-### Phase 3: API Endpoints + actor handoff - PLANNED
+### Phase 3: API Endpoints + actor handoff - COMPLETED
 
 **Objective**: HTTP JSON API for MCQ CRUD and attempts; login/register can hand the client a `userId` without cookies/JWT.
 
 **TDD (Vitest):**
 
-1. Failing tests for `GET/POST /api/mcqs` and `GET/PUT/DELETE /api/mcqs/:id` (validation, 401, 404, 409, success). Mock MCQ Service.
-2. Failing tests for `POST /api/mcqs/:id/attempts`.
-3. Failing tests that login/register success bodies include `userId` and `redirectTo: "/mcqs"` (update existing `src/lib/auth/auth-routes.test.ts`).
-4. Failing tests that `submitAuthRequest` stores `quizmaker.actorUserId` and navigates to `/mcqs`; logout clears it.
-5. Implement until green.
+1. Wrote failing tests for `GET/POST /api/mcqs` and `GET/PUT/DELETE /api/mcqs/:id` (validation, 401, 404, 409, success). Mocked MCQ Service.
+2. Wrote failing tests for `POST /api/mcqs/:id/attempts` and preview GET (no `isCorrect`).
+3. Updated `src/lib/auth/auth-routes.test.ts` so login/register success is `200` + `{ userId, redirectTo: "/mcqs" }`.
+4. Updated `submit-auth` tests: store `quizmaker.actorUserId`, navigate to `/mcqs`, clear on logout.
+5. Implemented until green.
 
 **Tasks**:
 
-1. Add Zod schemas in `src/lib/mcq/schemas.ts`.
-2. Implement:
+1. Added Zod schemas in `src/lib/mcq/schemas.ts`.
+2. Implemented:
    - `src/app/api/mcqs/route.ts` — GET list, POST create
    - `src/app/api/mcqs/[id]/route.ts` — GET, PUT, DELETE
    - `src/app/api/mcqs/[id]/attempts/route.ts` — POST
-   - optional preview GET if you split the DTO
-3. Switch register/login success to 200 JSON; update `submit-auth.ts` and its tests.
-4. Point `MCQ_STUB_PATH` (or a new `MCQS_PATH`) at `/mcqs`.
-5. Keep Phase 3 tests green.
+   - `src/app/api/mcqs/[id]/preview/route.ts` — GET preview-safe DTO
+3. Register/login success is 200 JSON; `submit-auth.ts` stores actor id in `sessionStorage`.
+4. `MCQS_PATH` / `MCQ_STUB_PATH` are `/mcqs`. `/mcq` redirects to `/mcqs`. `/mcqs` still renders the Sprint 1 stub until Phase 4.
+5. Phase 3 tests green. Full suite: **106 passed**. `npm run lint` and `npm run build` passed.
 
 **Deliverables**:
 
 - API routes above
+- `src/lib/mcq/http.ts`, `src/lib/mcq/actor.ts`, `src/lib/mcq/paths.ts`
 - Auth success / path updates
-- Route tests (new `src/lib/mcq/mcq-routes.test.ts` and updated auth tests)
-- This PRD updated
+- `src/lib/mcq/mcq-routes.test.ts` (15 tests) and updated auth tests
+- This PRD: Phase 3 → COMPLETED
 
 ### Phase 4: UI (list, create, edit, delete, preview) - PLANNED
 
@@ -607,13 +608,22 @@ Fill this in as code is written. Phase 1 schema is in place.
 - `src/lib/services/mcq-service.ts` — only module that talks to D1 for Mcqs / McqChoices / McqAttempts
 - `src/lib/services/mcq-service.test.ts` — 23 tests; in-memory D1 + seeded Users row for `getUserById`
 
+### Key files (Phase 3 — done)
+
+- `src/lib/mcq/schemas.ts` — Zod bodies for create/update/delete/attempt
+- `src/lib/mcq/http.ts` — map service errors to 400/401/404/409; DELETE actor check
+- `src/lib/mcq/actor.ts` — `sessionStorage` key `quizmaker.actorUserId`
+- `src/app/api/mcqs/route.ts` — GET list, POST create
+- `src/app/api/mcqs/[id]/route.ts` — GET, PUT, DELETE
+- `src/app/api/mcqs/[id]/preview/route.ts` — GET without `isCorrect`
+- `src/app/api/mcqs/[id]/attempts/route.ts` — POST attempt
+- `src/lib/mcq/mcq-routes.test.ts` — 15 route tests (service mocked)
+- `src/lib/auth/paths.ts` — `MCQS_PATH = "/mcqs"`
+- `src/app/mcqs/page.tsx` — temporary stub (replace in Phase 4)
+- `src/app/mcq/page.tsx` — redirect to `/mcqs`
+
 ### Key files (to add — update paths if names differ)
 
-- `src/lib/mcq/schemas.ts`, `src/lib/mcq/paths.ts`
-- `src/app/api/mcqs/route.ts`
-- `src/app/api/mcqs/[id]/route.ts`
-- `src/app/api/mcqs/[id]/attempts/route.ts`
-- `src/app/mcqs/page.tsx`
 - `src/app/mcqs/new/page.tsx`
 - `src/app/mcqs/[id]/edit/page.tsx`
 - `src/app/mcqs/[id]/preview/page.tsx`
@@ -670,9 +680,9 @@ await db
 - [ ] Preview Submit with no selection shows `answer not selected` and writes no attempt.
 - [ ] Preview Submit with a selection records an attempt and shows correct or incorrect.
 - [ ] The same question can receive multiple attempts.
-- [ ] Login/register land on `/mcqs`; `/mcq` redirects to `/mcqs`.
+- [x] Login/register land on `/mcqs`; `/mcq` redirects to `/mcqs`.
 - [ ] Logout still returns to login and clears the client actor id.
-- [ ] No cookies, JWTs, or server sessions are introduced.
+- [x] No cookies, JWTs, or server sessions are introduced.
 - [ ] Vitest covers schema, service, endpoints, and UI per phase; full suite passes in Phase 5.
 - [ ] `npm run lint` and `npm run build` pass in Phase 5.
 
@@ -756,8 +766,8 @@ Add entries when bugs are found and fixed.
 ### Login no longer reaches `/mcqs` after switching to JSON success
 
 **Problem**: Client stays on `/login` or shows a generic error.
-**Cause**: `submitAuthRequest` still treats only 303/`opaqueredirect` as success.
-**Solution**: Treat `200` + `{ userId, redirectTo }` as success; write `sessionStorage`; then assign `redirectTo`.
+**Cause**: `submitAuthRequest` used to treat only 303/`opaqueredirect` as success.
+**Solution**: Implemented in Phase 3. Treat `200` + `{ userId, redirectTo }` as success; write `sessionStorage` (`quizmaker.actorUserId`); then assign `redirectTo`. Logout still 303s to `/login` and clears the actor id when submitted through `submitAuthRequest`.
 **Code Reference**: `src/lib/auth/submit-auth.ts`
 
 ---
@@ -781,6 +791,6 @@ Add entries when bugs are found and fixed.
 ## Current Status
 
 **Last Updated**: 2026-09-03
-**Current Phase**: Phase 3 — API Endpoints + actor handoff
-**Status**: Phase 2 COMPLETED. MCQ Service covers list/get/create/update/delete and attempts. No HTTP routes yet.
-**Next Steps**: Phase 3 TDD — `/api/mcqs*` handlers and login/register `userId` handoff. Branch: `feature/mcq-crud-v2`.
+**Current Phase**: Phase 4 — UI
+**Status**: Phase 3 COMPLETED. `/api/mcqs*` is live in code; login/register return `{ userId, redirectTo: "/mcqs" }`. `/mcqs` still shows the Sprint 1 stub.
+**Next Steps**: Phase 4 TDD — list/create/edit/delete/preview UI. Propose `@shadcn/dropdown-menu` and `@shadcn/radio-group` before adding. Branch: `feature/mcq-crud-v2`.

@@ -4,13 +4,13 @@ import {
   getPasswordHashForUsernameOrEmail,
   getUserByUsernameOrEmail,
 } from "@/lib/services/user-service";
+import { NextResponse } from "next/server";
 import {
   errorResponse,
   parseBody,
   readRequestBody,
-  redirectResponse,
 } from "@/lib/auth/http";
-import { MCQ_STUB_PATH } from "@/lib/auth/paths";
+import { MCQS_PATH } from "@/lib/auth/paths";
 import { loginSchema } from "@/lib/auth/schemas";
 
 const INVALID_CREDENTIALS = "Invalid username/email or password.";
@@ -41,7 +41,10 @@ export async function POST(request: Request): Promise<Response> {
       return errorResponse(INVALID_CREDENTIALS, 401);
     }
 
-    return redirectResponse(request, MCQ_STUB_PATH);
+    return NextResponse.json({
+      userId: user.id,
+      redirectTo: MCQS_PATH,
+    });
   } catch (error) {
     console.error("POST /login failed", error);
     return errorResponse("Unable to log in. Please try again.", 500);

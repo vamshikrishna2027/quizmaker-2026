@@ -1,5 +1,6 @@
-import { McqStubPage } from "@/components/mcq-stub-page";
+import { redirect } from "next/navigation";
+import { MCQS_PATH } from "@/lib/auth/paths";
 
 export default function Page() {
-  return <McqStubPage />;
+  redirect(MCQS_PATH);
 }

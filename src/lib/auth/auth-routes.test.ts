@@ -112,7 +112,7 @@ describe("POST /register", () => {
     expect(body.error).toMatch(/email/i);
   });
 
-  it("creates a user via User Service and redirects to the MCQ stub", async () => {
+  it("creates a user via User Service and returns userId plus /mcqs redirect", async () => {
     createUser.mockResolvedValue(sampleUser);
 
     const response = await registerPost(
@@ -132,8 +132,11 @@ describe("POST /register", () => {
       email: "ada@example.com",
       password: "SecurePass123!",
     });
-    expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe("http://localhost/mcq");
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      userId: "user-1",
+      redirectTo: "/mcqs",
+    });
   });
 });
 
@@ -189,7 +192,7 @@ describe("POST /login", () => {
     expect(body.error).toMatch(/invalid/i);
   });
 
-  it("verifies the password hash and redirects to the MCQ stub on success", async () => {
+  it("verifies the password hash and returns userId plus /mcqs redirect", async () => {
     getUserByUsernameOrEmail.mockResolvedValue(sampleUser);
     getPasswordHashForUsernameOrEmail.mockResolvedValue("stored-hash");
     verifyPassword.mockResolvedValue(true);
@@ -209,8 +212,11 @@ describe("POST /login", () => {
       "SecurePass123!",
       "stored-hash",
     );
-    expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe("http://localhost/mcq");
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      userId: "user-1",
+      redirectTo: "/mcqs",
+    });
   });
 });
 
