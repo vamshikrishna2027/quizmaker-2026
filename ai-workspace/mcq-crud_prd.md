@@ -357,7 +357,7 @@ Centralize all Mcqs / McqChoices / McqAttempts access. Suggested functions:
 
 | Operation | Responsibility |
 |-----------|----------------|
-| `listMcqs` | All questions, newest `UpdatedAt` first (or `CreatedAt` desc — pick one and test it) |
+| `listMcqs` | All questions, newest `UpdatedAt` first (implemented) |
 | `getMcqById` | Question + choices ordered by `Position`; `null` if missing |
 | `createMcq` | Validate, insert Mcq + choices, return the created aggregate |
 | `updateMcq` | Validate, update Mcq, replace choices, return aggregate |
@@ -453,30 +453,30 @@ Do not start Phase N+1 until Phase N’s suite is green and this PRD’s phase m
 - `npm test` — 67 passed; `npm run lint` — passed; `npm run build` — passed
 - This PRD: Phase 1 → COMPLETED
 
-### Phase 2: MCQ Service - PLANNED
+### Phase 2: MCQ Service - COMPLETED
 
 **Objective**: All MCQ / choice / attempt persistence goes through one service, the same way Users go through User Service.
 
 **TDD (Vitest):**
 
-1. Failing tests for create (happy path, empty fields, < 2 choices, no correct choice, two correct choices, duplicate name, duplicate question, unknown actor).
-2. Failing tests for list, get-by-id (found / missing), update (including uniqueness excluding self), delete (cascades choices; missing id throws).
-3. Failing tests for `createAttempt` (correct snapshot, incorrect snapshot, multiple attempts on one MCQ, choice from another MCQ rejected, missing MCQ).
-4. Implement with an in-memory D1 mock at the DB boundary (see `src/lib/services/user-service.test.ts`).
-5. Refactor while green.
+1. Wrote failing tests for create (happy path, empty fields, < 2 choices, no correct choice, two correct choices, duplicate name, duplicate question, unknown actor).
+2. Wrote failing tests for list, get-by-id (found / missing), update (including uniqueness excluding self), delete (cascades choices; missing id throws).
+3. Wrote failing tests for `createAttempt` (correct snapshot, incorrect snapshot, multiple attempts on one MCQ, choice from another MCQ rejected, missing MCQ).
+4. Implemented with an in-memory D1 mock at the DB boundary (`src/lib/services/mcq-service.test.ts`).
+5. Suite green.
 
 **Tasks**:
 
-1. Implement `src/lib/services/mcq-service.ts` + typed errors.
-2. Verify actor via `getUserById` from User Service.
-3. Use numbered placeholders; batch choice insert/replace safely.
-4. Keep Phase 2 tests green.
+1. Implemented `src/lib/services/mcq-service.ts` + typed errors (`McqNotFoundError`, `McqConflictError`, `McqValidationError`, `McqUnauthorizedError`).
+2. Actor is verified via `getUserById` from User Service.
+3. Numbered placeholders; choice insert is sequential; update deletes existing choices then inserts the new set (`ChoiceId` SET NULL on attempts in the mock).
+4. Phase 2 Vitest suite green (23 tests). Full suite: **90 passed**. `npm run lint` and `npm run build` passed.
 
 **Deliverables**:
 
-- `src/lib/services/mcq-service.ts`
-- `src/lib/services/mcq-service.test.ts`
-- This PRD updated
+- `src/lib/services/mcq-service.ts` — `listMcqs` (UpdatedAt DESC), `getMcqById`, `createMcq`, `updateMcq`, `deleteMcq`, `createAttempt`
+- `src/lib/services/mcq-service.test.ts` (23 tests, in-memory D1)
+- This PRD: Phase 2 → COMPLETED
 
 ### Phase 3: API Endpoints + actor handoff - PLANNED
 
@@ -602,9 +602,13 @@ Fill this in as code is written. Phase 1 schema is in place.
 - `src/lib/db/mcqs-schema.ts` — canonical CREATE SQL and column/table name contracts
 - `src/lib/db/mcqs-schema.test.ts` — 25 schema-contract tests (module + migration must stay in sync)
 
+### Key files (Phase 2 — done)
+
+- `src/lib/services/mcq-service.ts` — only module that talks to D1 for Mcqs / McqChoices / McqAttempts
+- `src/lib/services/mcq-service.test.ts` — 23 tests; in-memory D1 + seeded Users row for `getUserById`
+
 ### Key files (to add — update paths if names differ)
 
-- `src/lib/services/mcq-service.ts` + `src/lib/services/mcq-service.test.ts`
 - `src/lib/mcq/schemas.ts`, `src/lib/mcq/paths.ts`
 - `src/app/api/mcqs/route.ts`
 - `src/app/api/mcqs/[id]/route.ts`
@@ -619,11 +623,12 @@ Fill this in as code is written. Phase 1 schema is in place.
 
 ```ts
 // Service functions take D1Database, never getCloudflareContext themselves.
-export async function createMcq(db: D1Database, input: CreateMcqInput): Promise<McqRecord> {
-  // validate → insert Mcqs → insert McqChoices → return getMcqById
-}
+// Implemented in src/lib/services/mcq-service.ts:
+// createMcq → requireActor → normalize/validate → unique name/question → insert Mcqs + choices
+// updateMcq → same validation → UPDATE Mcqs → DELETE choices → insert replacements
+// createAttempt → requireActor → choice must belong to MCQ → snapshot IsCorrect
 
-// Route handlers:
+// Route handlers (Phase 3):
 const db = await getDb();
 const mcq = await createMcq(db, parsed.data);
 ```
@@ -650,7 +655,7 @@ await db
 ## Acceptance Criteria
 
 - [x] `Mcqs`, `McqChoices`, and `McqAttempts` exist via a local D1 migration and match `mcqs-schema.ts`.
-- [ ] All MCQ database access goes through the MCQ Service.
+- [x] All MCQ database access goes through the MCQ Service.
 - [ ] Teachers can list all MCQs at `/mcqs` in a shadcn table (Name, Question, Actions).
 - [ ] `/mcqs` has **Create question** and **Log out** at the top right.
 - [ ] Each row’s Actions control is a 3-dot button whose dropdown offers Edit, Preview, Delete.
@@ -776,6 +781,6 @@ Add entries when bugs are found and fixed.
 ## Current Status
 
 **Last Updated**: 2026-09-03
-**Current Phase**: Phase 2 — MCQ Service
-**Status**: Phase 1 COMPLETED. Local D1 has `Mcqs`, `McqChoices`, and `McqAttempts`. Remote D1 was not migrated.
-**Next Steps**: Phase 2 TDD — failing MCQ Service tests, then `src/lib/services/mcq-service.ts`. Branch: `feature/mcq-crud-v2`.
+**Current Phase**: Phase 3 — API Endpoints + actor handoff
+**Status**: Phase 2 COMPLETED. MCQ Service covers list/get/create/update/delete and attempts. No HTTP routes yet.
+**Next Steps**: Phase 3 TDD — `/api/mcqs*` handlers and login/register `userId` handoff. Branch: `feature/mcq-crud-v2`.
