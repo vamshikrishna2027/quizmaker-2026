@@ -3,8 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SignupForm } from "@/components/signup-form";
 import { LoginForm } from "@/components/login-form";
-import { McqStubPage } from "@/components/mcq-stub-page";
-import { LOGIN_PATH, LOGOUT_PATH, MCQ_STUB_PATH, REGISTER_PATH } from "@/lib/auth/paths";
+import { LOGIN_PATH, REGISTER_PATH } from "@/lib/auth/paths";
 
 const submitAuthRequest = vi.fn();
 
@@ -142,18 +141,3 @@ describe("LoginForm", () => {
   });
 });
 
-describe("McqStubPage", () => {
-  it("is a placeholder with no MCQ management UI and posts logout to /logout", () => {
-    render(<McqStubPage />);
-
-    expect(screen.getByText(/placeholder landing page/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /create question/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /edit question/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /test bank/i })).not.toBeInTheDocument();
-
-    const logoutForm = screen.getByRole("button", { name: /log out/i }).closest("form");
-    expect(logoutForm).toHaveAttribute("action", LOGOUT_PATH);
-    expect(logoutForm?.getAttribute("method")?.toLowerCase()).toBe("post");
-    expect(screen.queryByText(MCQ_STUB_PATH)).not.toBeInTheDocument();
-  });
-});

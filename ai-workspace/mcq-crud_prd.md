@@ -1,5 +1,5 @@
 Date created: 2026-09-03
-Date last modified: 2026-09-03
+Date last modified: 2026-09-04
 
 # MCQ CRUD - Technical PRD
 
@@ -164,10 +164,10 @@ This is attribution only, not a security boundary. Do not invent tokens to “fi
 | Area | Current location | Change |
 |------|------------------|--------|
 | Post-auth path | `MCQ_STUB_PATH = "/mcq"` in `src/lib/auth/paths.ts` | Become `/mcqs`; keep `/mcq` → `/mcqs` redirect |
-| Stub UI | `src/components/mcq-stub-page.tsx`, `src/app/mcq/page.tsx` | Replace stub content; list lives at `/mcqs` |
+| Stub UI | `src/components/mcq-stub-page.tsx`, `src/app/mcq/page.tsx` | Stub removed; list lives at `/mcqs`; `/mcq` redirects |
 | Auth success | `src/app/api/register/route.ts`, `src/app/api/login/route.ts`, `src/lib/auth/submit-auth.ts` | 200 JSON + `sessionStorage` actor id (see above) |
 | shadcn already installed | `table`, `button`, `dialog`, `input`, `field`, `label`, `card` | Reuse these |
-| shadcn to propose | — | `@shadcn/dropdown-menu`, `@shadcn/radio-group` (ask first) |
+| shadcn added in Phase 4 | `dropdown-menu`, `radio-group` | Wrappers in `src/components/ui/` (Base UI Menu + Radio) |
 | Users / User Service | `migrations/0001_create_users.sql`, `src/lib/services/user-service.ts` | Do not redesign; only call `getUserById` for actor checks |
 
 ---
@@ -510,11 +510,11 @@ Do not start Phase N+1 until Phase N’s suite is green and this PRD’s phase m
 - `src/lib/mcq/mcq-routes.test.ts` (15 tests) and updated auth tests
 - This PRD: Phase 3 → COMPLETED
 
-### Phase 4: UI (list, create, edit, delete, preview) - PLANNED
+### Phase 4: UI (list, create, edit, delete, preview) - COMPLETED
 
 **Objective**: Replace the Sprint 1 stub with the full MCQ workspace: list table, create, edit, delete confirmation, and preview-with-attempts.
 
-**TDD (Vitest + Testing Library):** Write failing tests first for each surface, then implement. Mock `fetch`. Keep the suite green before Phase 5.
+**TDD (Vitest + Testing Library):** Wrote failing UI tests first (list, form, preview, `/mcq` redirect), then implemented with `fetch` mocked. Suite green before Phase 5.
 
 **List (`/mcqs`):**
 
@@ -539,12 +539,12 @@ Do not start Phase N+1 until Phase N’s suite is green and this PRD’s phase m
 
 **Tasks**:
 
-1. Propose adding `@shadcn/dropdown-menu` (3-dot actions) and `@shadcn/radio-group` (correct-answer and preview radios). Do not add them silently; ask first. Prefer these once approved.
-2. Build list: `src/app/mcqs/page.tsx` + list client component under `src/components/mcq/`.
-3. Redirect `src/app/mcq/page.tsx` → `/mcqs`. Remove stub-only copy (“placeholder landing page”, “features will arrive in a future sprint”).
-4. Shared create/edit form (`src/components/mcq/mcq-question-form.tsx`) and pages: `src/app/mcqs/new/page.tsx`, `src/app/mcqs/[id]/edit/page.tsx`.
-5. Preview: `src/app/mcqs/[id]/preview/page.tsx` + preview client component. Load preview-safe choices (no `isCorrect` in the client for this page).
-6. Keep Phase 4 tests green.
+1. Added `dropdown-menu` and `radio-group` under `src/components/ui/` (Base UI Menu + Radio, same wrapper style as existing Dialog). The `npx shadcn@latest add` CLI hung on install; no new npm packages were added (`@base-ui/react` already had `menu` and `radio-group`).
+2. Built list: `src/app/mcqs/page.tsx` + `src/components/mcq/mcq-list.tsx` (client fetch of `GET /api/mcqs`).
+3. `/mcq` still redirects to `/mcqs`. Removed `src/components/mcq-stub-page.tsx` and its placeholder copy.
+4. Shared create/edit form (`src/components/mcq/mcq-question-form.tsx`) and pages: `src/app/mcqs/new/page.tsx`, `src/app/mcqs/[id]/edit/page.tsx` (edit loads `GET /api/mcqs/{id}`).
+5. Preview: `src/app/mcqs/[id]/preview/page.tsx` + `mcq-preview.tsx`. Loads `GET /api/mcqs/{id}/preview` (no `isCorrect` on the client).
+6. Phase 4 tests green. Full suite: **120 passed**. `npm run lint` and `npm run build` passed.
 
 **Deliverables**:
 
@@ -552,7 +552,7 @@ Do not start Phase N+1 until Phase N’s suite is green and this PRD’s phase m
 - Redirect from `/mcq`
 - Create and edit pages + shared form + validation Dialog with the specified copy
 - Preview page + attempt submit (including `answer not selected` / correct / incorrect)
-- `src/components/mcq/*.test.tsx` covering list, form, delete, and preview
+- `src/components/mcq/mcq-list.test.tsx`, `mcq-question-form.test.tsx`, `mcq-preview.test.tsx`, `src/app/mcq/page.test.ts`
 - This PRD updated
 
 ### Phase 5: Verification - PLANNED
@@ -583,16 +583,16 @@ Do not start Phase N+1 until Phase N’s suite is green and this PRD’s phase m
 
 ## Technical Implementation Details
 
-Fill this in as code is written. Phase 1 schema is in place.
+Fill this in as code is written. Phases 1–4 are in place.
 
 ### Key files (current, Sprint 1)
 
 - `src/lib/db/client.ts` — `getDb()`
 - `src/lib/db/users-schema.ts` — Users schema contract pattern to copy
 - `src/lib/services/user-service.ts` — service + typed-error pattern to copy
-- `src/lib/auth/paths.ts` — `MCQ_STUB_PATH` (update to `/mcqs`)
-- `src/lib/auth/submit-auth.ts` — auth client submit (extend for `userId`)
-- `src/components/mcq-stub-page.tsx` — replace / stop using for `/mcqs`
+- `src/lib/auth/paths.ts` — `MCQS_PATH` / `MCQ_STUB_PATH` are `/mcqs`
+- `src/lib/auth/submit-auth.ts` — auth client submit stores `userId`
+- `src/components/mcq-stub-page.tsx` — removed in Phase 4
 - `src/components/ui/table.tsx` — shadcn Table
 - `src/components/ui/dialog.tsx` — confirmation and validation popups
 - `migrations/0001_create_users.sql` — do not modify
@@ -619,15 +619,20 @@ Fill this in as code is written. Phase 1 schema is in place.
 - `src/app/api/mcqs/[id]/attempts/route.ts` — POST attempt
 - `src/lib/mcq/mcq-routes.test.ts` — 15 route tests (service mocked)
 - `src/lib/auth/paths.ts` — `MCQS_PATH = "/mcqs"`
-- `src/app/mcqs/page.tsx` — temporary stub (replace in Phase 4)
+- `src/app/mcqs/page.tsx` — list (replaced stub)
 - `src/app/mcq/page.tsx` — redirect to `/mcqs`
 
-### Key files (to add — update paths if names differ)
+### Key files (Phase 4 — done)
 
-- `src/app/mcqs/new/page.tsx`
-- `src/app/mcqs/[id]/edit/page.tsx`
-- `src/app/mcqs/[id]/preview/page.tsx`
-- `src/components/mcq/` — list, form, preview, dialogs, tests
+- `src/components/ui/dropdown-menu.tsx` — 3-dot row actions (Base UI Menu)
+- `src/components/ui/radio-group.tsx` — correct-answer and preview radios
+- `src/components/mcq/mcq-list.tsx` — table, Create question, Log out, delete confirm
+- `src/components/mcq/mcq-question-form.tsx` — shared create/edit form + validation dialog
+- `src/components/mcq/mcq-edit-page.tsx` — loads `GET /api/mcqs/{id}`; not-found + back link
+- `src/components/mcq/mcq-preview.tsx` / `mcq-preview-page.tsx` — preview-safe DTO + attempts
+- `src/app/mcqs/new/page.tsx`, `src/app/mcqs/[id]/edit/page.tsx`, `src/app/mcqs/[id]/preview/page.tsx`
+- `src/lib/mcq/validation.ts` — `text box is empty` / `none of answer is selected` / `answer not selected`
+- `src/components/mcq/*.test.tsx` + `src/app/mcq/page.test.ts`
 
 ### Implementation patterns
 
@@ -666,22 +671,22 @@ await db
 
 - [x] `Mcqs`, `McqChoices`, and `McqAttempts` exist via a local D1 migration and match `mcqs-schema.ts`.
 - [x] All MCQ database access goes through the MCQ Service.
-- [ ] Teachers can list all MCQs at `/mcqs` in a shadcn table (Name, Question, Actions).
-- [ ] `/mcqs` has **Create question** and **Log out** at the top right.
-- [ ] Each row’s Actions control is a 3-dot button whose dropdown offers Edit, Preview, Delete.
-- [ ] Create question navigates to `/mcqs/new` with name, question, two choices, correct-answer radios, Add choice, and Save.
-- [ ] Add choice adds a row; Remove appears when there are more than two choices and cannot reduce below two.
-- [ ] Save rejects empty text boxes and a missing correct radio via a popup + OK, using the specified sentences (both shown when both apply).
-- [ ] Save rejects duplicate name and duplicate question.
-- [ ] Successful create adds the row to the table.
-- [ ] Edit navigates to `/mcqs/{id}/edit` with prefilled values and can update the question.
-- [ ] Delete asks for confirmation and, on confirm, removes the MCQ, its choices, and its attempts.
-- [ ] Preview is `/mcqs/{id}/preview` with name, question, answer radios, Submit, and Back to questions (`/mcqs`).
-- [ ] Preview Submit with no selection shows `answer not selected` and writes no attempt.
-- [ ] Preview Submit with a selection records an attempt and shows correct or incorrect.
-- [ ] The same question can receive multiple attempts.
+- [x] Teachers can list all MCQs at `/mcqs` in a shadcn table (Name, Question, Actions).
+- [x] `/mcqs` has **Create question** and **Log out** at the top right.
+- [x] Each row’s Actions control is a 3-dot button whose dropdown offers Edit, Preview, Delete.
+- [x] Create question navigates to `/mcqs/new` with name, question, two choices, correct-answer radios, Add choice, and Save.
+- [x] Add choice adds a row; Remove appears when there are more than two choices and cannot reduce below two.
+- [x] Save rejects empty text boxes and a missing correct radio via a popup + OK, using the specified sentences (both shown when both apply).
+- [x] Save rejects duplicate name and duplicate question.
+- [x] Successful create adds the row to the table.
+- [x] Edit navigates to `/mcqs/{id}/edit` with prefilled values and can update the question.
+- [x] Delete asks for confirmation and, on confirm, removes the MCQ, its choices, and its attempts.
+- [x] Preview is `/mcqs/{id}/preview` with name, question, answer radios, Submit, and Back to questions (`/mcqs`).
+- [x] Preview Submit with no selection shows `answer not selected` and writes no attempt.
+- [x] Preview Submit with a selection records an attempt and shows correct or incorrect.
+- [x] The same question can receive multiple attempts.
 - [x] Login/register land on `/mcqs`; `/mcq` redirects to `/mcqs`.
-- [ ] Logout still returns to login and clears the client actor id.
+- [x] Logout still returns to login and clears the client actor id.
 - [x] No cookies, JWTs, or server sessions are introduced.
 - [ ] Vitest covers schema, service, endpoints, and UI per phase; full suite passes in Phase 5.
 - [ ] `npm run lint` and `npm run build` pass in Phase 5.
@@ -706,7 +711,7 @@ await db
 - Cloudflare D1 — `Mcqs`, `McqChoices`, `McqAttempts` (binding `DB`, database `quizmaker-2026`)
 - Zod — already installed; request validation
 - Vitest + Testing Library — already installed
-- shadcn/ui (Base UI, `base-nova`) — Table, Dialog, Button, Field, Input; propose dropdown-menu and radio-group
+- shadcn/ui (Base UI, `base-nova`) — Table, Dialog, Button, Field, Input, dropdown-menu, radio-group
 
 ### Internal Dependencies
 
@@ -770,6 +775,20 @@ Add entries when bugs are found and fixed.
 **Solution**: Implemented in Phase 3. Treat `200` + `{ userId, redirectTo }` as success; write `sessionStorage` (`quizmaker.actorUserId`); then assign `redirectTo`. Logout still 303s to `/login` and clears the actor id when submitted through `submitAuthRequest`.
 **Code Reference**: `src/lib/auth/submit-auth.ts`
 
+### shadcn add hung on Windows
+
+**Problem**: `npx shadcn@latest add @shadcn/dropdown-menu @shadcn/radio-group` sat on “Installing dependencies” / downloading `shadcn@latest`.
+**Cause**: npx tried to fetch a newer CLI and never finished; `@base-ui/react` already exports `menu` and `radio-group`.
+**Solution**: Added `src/components/ui/dropdown-menu.tsx` and `radio-group.tsx` in the same wrapper style as `dialog.tsx`. No extra npm package.
+**Code Reference**: `src/components/ui/dropdown-menu.tsx`, `src/components/ui/radio-group.tsx`
+
+### jsdom has no PointerEvent constructor
+
+**Problem**: Clicking Base UI radios/menus in Vitest throws `PointerEvent is not a constructor`.
+**Cause**: jsdom’s `window.PointerEvent` is missing; Base UI Radio dispatches `new ownerWindow(input).PointerEvent('click', …)`.
+**Solution**: Polyfill `PointerEvent` in `vitest.setup.ts` only when `MouseEvent` exists (skip the Node test environment).
+**Code Reference**: `vitest.setup.ts`
+
 ---
 
 ## Notes for AI Agents
@@ -778,7 +797,7 @@ Add entries when bugs are found and fixed.
 2. Implement **one phase only** unless the user asks for more. Update this file when that phase finishes.
 3. TDD every phase: failing Vitest → code → green. Do not “add tests after” as a substitute.
 4. Do not add cookies, JWTs, server sessions, AI SDK calls, Course tables, or deploy/remote migrations.
-5. Ask before new npm dependencies and before `npx shadcn@latest add @shadcn/dropdown-menu` / `@shadcn/radio-group`.
+5. Ask before new npm dependencies. `dropdown-menu` and `radio-group` are already in `src/components/ui/`.
 6. Reuse User Service patterns (`getDb`, numbered placeholders, typed errors, colocated tests).
 7. Do not query D1 from route handlers or client components.
 8. When citing code in later updates, use `filepath:line-number`.
@@ -790,7 +809,7 @@ Add entries when bugs are found and fixed.
 
 ## Current Status
 
-**Last Updated**: 2026-09-03
-**Current Phase**: Phase 4 — UI
-**Status**: Phase 3 COMPLETED. `/api/mcqs*` is live in code; login/register return `{ userId, redirectTo: "/mcqs" }`. `/mcqs` still shows the Sprint 1 stub.
-**Next Steps**: Phase 4 TDD — list/create/edit/delete/preview UI. Propose `@shadcn/dropdown-menu` and `@shadcn/radio-group` before adding. Branch: `feature/mcq-crud-v2`.
+**Last Updated**: 2026-09-04
+**Current Phase**: Phase 5 — Verification
+**Status**: Phase 4 COMPLETED. `/mcqs` is the question table; create/edit/preview/delete work against `/api/mcqs*`. Sprint 1 stub removed. Full suite 120 passed; lint and build passed.
+**Next Steps**: Phase 5 — fill any acceptance gaps, re-run `npm test` / `lint` / `build`, and the local smoke path (register → create → edit → preview attempts → delete → logout). Branch: `feature/mcq-crud-v2`.
