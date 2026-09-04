@@ -11,10 +11,10 @@ the problem, the primary user, and the current state. Two or three sentences.
 Keep it current. An out-of-date description here misleads every future conversation.
 -->
 
-Greenfield Quiz Maker — Sprint 1. Teachers will eventually collaborate on an MCQ bank;
-this sprint builds registration/login/logout and the Users database foundation only.
-Phases 1–5 are complete (Users DB, User Service, auth endpoints, register/login UI + MCQ stub, verification). See
-`ai-workspace/register-login-logout_prd.md` for details.
+Greenfield Quiz Maker — Sprint 2. Teachers register/login, then manage a shared MCQ bank
+(list, create, edit, delete, preview with graded attempts). Sprint 1 auth and the Users
+table remain; MCQ data lives in `Mcqs`, `McqChoices`, and `McqAttempts`. See
+`ai-workspace/mcq-crud_prd.md` (Phases 1–5 complete).
 
 ## Stack
 
@@ -24,11 +24,11 @@ Phases 1–5 are complete (Users DB, User Service, auth endpoints, register/logi
 - **shadcn/ui** on Base UI, `base-nova` style, with Lucide icons
 - **TypeScript** in strict mode
 - **Wrangler** for Cloudflare configuration, secrets, and deployment
-- **Cloudflare D1** for persistence (Users table; binding `DB`)
+- **Cloudflare D1** for persistence (Users, Mcqs, McqChoices, McqAttempts; binding `DB`)
 - **Vitest** for unit tests (`npm test` / `npm run test:watch`)
 
-No AI SDK or MCQ features are built yet. Do not
-write code that imports an uninstalled package without adding it first and telling the user.
+No AI SDK is installed. Do not write code that imports an uninstalled package
+without adding it first and telling the user.
 
 ## Layout
 
