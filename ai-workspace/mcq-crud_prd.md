@@ -115,7 +115,7 @@ On failure, show a popup with an **OK** button. Message rules:
 - Cookies, JWTs, server sessions, refresh tokens (same boundary as Sprint 1, with the actor-id note below)
 - Password reset, email verification, social login
 - Images, rich text, or markdown in questions
-- Remote D1 migrations or `npm run deploy`
+- Further remote D1 schema changes or `npm run deploy` unless the user asks (`0002_create_mcqs.sql` was applied remotely on 2026-09-04)
 
 ### Cut
 
@@ -143,7 +143,7 @@ D1 tables (Mcqs, McqChoices, McqAttempts)
 - Mirror User Service: pass `D1Database` in, return mapped records, throw typed errors (`McqNotFoundError`, `McqConflictError`, `McqValidationError`).
 - Prepared statements with numbered placeholders (`?1`, `?2`). Never concatenate SQL.
 - `getDb()` stays in `src/lib/db/client.ts`. Never import DB modules into `'use client'` components.
-- Apply migrations **locally only** (`npx wrangler d1 migrations apply quizmaker-2026 --local`).
+- Apply migrations locally during implementation (`npx wrangler d1 migrations apply quizmaker-2026 --local`). Apply remotely only when asked (`--remote`). `0002_create_mcqs.sql` is now on both.
 - Ask before adding npm packages. shadcn components are copied source files (`npx shadcn@latest add @shadcn/<name>`), not new runtime dependencies.
 
 ### Actor identity (CreatedBy / AttemptedBy)
@@ -440,9 +440,9 @@ Do not start Phase N+1 until Phase N’s suite is green and this PRD’s phase m
 
 **Tasks**:
 
-1. Created D1 migration with `npx wrangler d1 migrations create quizmaker-2026 create_mcqs`. Not applied remotely.
+1. Created D1 migration with `npx wrangler d1 migrations create quizmaker-2026 create_mcqs`. Held back from remote until the user asked (2026-09-04).
 2. Put the three `CREATE TABLE` statements (and indexes) in that migration and in `src/lib/db/mcqs-schema.ts`.
-3. Applied **locally**: `npx wrangler d1 migrations apply quizmaker-2026 --local` (CI non-interactive). Local DB now has `Users`, `Mcqs`, `McqChoices`, `McqAttempts` plus the two McqId indexes.
+3. Applied **locally** first: `npx wrangler d1 migrations apply quizmaker-2026 --local`. Applied **remotely** on 2026-09-04: `npx wrangler d1 migrations apply quizmaker-2026 --remote` (CI non-interactive). Production D1 now has `Users`, `Mcqs`, `McqChoices`, `McqAttempts` plus the two McqId indexes.
 4. Phase 1 Vitest suite green (25 schema tests). Full suite: **67 passed**.
 
 **Deliverables**:
@@ -599,7 +599,7 @@ Fill this in as code is written. Phases 1–4 are in place.
 
 ### Key files (Phase 1 — done)
 
-- `migrations/0002_create_mcqs.sql` — Mcqs, McqChoices, McqAttempts + McqId indexes (applied locally only)
+- `migrations/0002_create_mcqs.sql` — Mcqs, McqChoices, McqAttempts + McqId indexes (applied locally and, on 2026-09-04, remotely)
 - `src/lib/db/mcqs-schema.ts` — canonical CREATE SQL and column/table name contracts
 - `src/lib/db/mcqs-schema.test.ts` — 25 schema-contract tests (module + migration must stay in sync)
 
@@ -669,7 +669,7 @@ await db
 
 ## Acceptance Criteria
 
-- [x] `Mcqs`, `McqChoices`, and `McqAttempts` exist via a local D1 migration and match `mcqs-schema.ts`.
+- [x] `Mcqs`, `McqChoices`, and `McqAttempts` exist via D1 migration `0002_create_mcqs.sql` (local + remote) and match `mcqs-schema.ts`.
 - [x] All MCQ database access goes through the MCQ Service.
 - [x] Teachers can list all MCQs at `/mcqs` in a shadcn table (Name, Question, Actions).
 - [x] `/mcqs` has **Create question** and **Log out** at the top right.
@@ -738,7 +738,7 @@ await db
 - **Mitigation**: Use `sessionStorage` actor id + 200 JSON login/register. Document the limitation; do not expand auth scope.
 
 - **Risk**: Remote migration applied by accident.
-- **Mitigation**: Local apply only. Never `migrations apply --remote` unless the user explicitly asks.
+- **Mitigation**: Local apply during implementation. Remote apply only when the user asks. Done on 2026-09-04 for `0002_create_mcqs.sql`.
 
 ### User Experience Risks
 
@@ -765,7 +765,7 @@ Add entries when bugs are found and fixed.
 
 **Problem**: `npx wrangler d1 migrations apply quizmaker-2026 --local --yes` fails with `Unknown argument: yes`.
 **Cause**: Wrangler 4.118.0 does not accept `--yes` on this command.
-**Solution**: Run with `CI=true` so the confirmation uses the non-interactive fallback (`yes`). Still pass `--local`. Never add `--remote`.
+**Solution**: Run with `CI=true` so the confirmation uses the non-interactive fallback (`yes`). Use `--local` for the laptop DB. Use `--remote` only when the user asks to change production D1.
 **Code Reference**: `migrations/0002_create_mcqs.sql`
 
 ### Login no longer reaches `/mcqs` after switching to JSON success
@@ -789,6 +789,13 @@ Add entries when bugs are found and fixed.
 **Solution**: Polyfill `PointerEvent` in `vitest.setup.ts` only when `MouseEvent` exists (skip the Node test environment).
 **Code Reference**: `vitest.setup.ts`
 
+### Deployed create shows “Unable to create question”
+
+**Problem**: Production Save shows a popup: `Unable to create question. Please try again.`
+**Cause**: `npm run deploy` ships the Worker code only. It does not run D1 migrations. Until 2026-09-04, remote D1 had `Users` but not `Mcqs` / `McqChoices` / `McqAttempts`, so `INSERT INTO Mcqs` failed as an unmapped 500.
+**Solution**: Applied `0002_create_mcqs.sql` remotely. Existing users were not changed. Create/list/edit/preview can now persist on production.
+**Code Reference**: `migrations/0002_create_mcqs.sql`
+
 ---
 
 ## Notes for AI Agents
@@ -796,7 +803,7 @@ Add entries when bugs are found and fixed.
 1. Read Overview, Business Goal, Hypothesis, and Scope first. Scope (In / Out / Cut) is a hard boundary.
 2. Implement **one phase only** unless the user asks for more. Update this file when that phase finishes.
 3. TDD every phase: failing Vitest → code → green. Do not “add tests after” as a substitute.
-4. Do not add cookies, JWTs, server sessions, AI SDK calls, Course tables, or deploy/remote migrations.
+4. Do not add cookies, JWTs, server sessions, AI SDK calls, or Course tables. Do not deploy or apply remote D1 migrations unless the user explicitly asks.
 5. Ask before new npm dependencies. `dropdown-menu` and `radio-group` are already in `src/components/ui/`.
 6. Reuse User Service patterns (`getDb`, numbered placeholders, typed errors, colocated tests).
 7. Do not query D1 from route handlers or client components.
@@ -811,5 +818,5 @@ Add entries when bugs are found and fixed.
 
 **Last Updated**: 2026-09-04
 **Current Phase**: Phase 5 — Verification
-**Status**: Phase 4 COMPLETED. `/mcqs` is the question table; create/edit/preview/delete work against `/api/mcqs*`. Sprint 1 stub removed. Full suite 120 passed; lint and build passed.
-**Next Steps**: Phase 5 — fill any acceptance gaps, re-run `npm test` / `lint` / `build`, and the local smoke path (register → create → edit → preview attempts → delete → logout). Branch: `feature/mcq-crud-v2`.
+**Status**: Phase 4 COMPLETED. Remote D1 now has `Mcqs`, `McqChoices`, and `McqAttempts` (`0002_create_mcqs.sql` applied 2026-09-04). Production create/list/edit/preview can persist. Existing `Users` rows were not changed.
+**Next Steps**: Retry create on https://quizmaker-2026.vamshikrishna.workers.dev. Then Phase 5 smoke (register → create → edit → preview attempts → delete → logout). Branch: `feature/mcq-crud-v2`.
